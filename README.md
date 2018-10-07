@@ -5,3 +5,5 @@ This project is a fork of https://github.com/NovaTecConsulting/JMeter-InfluxDB-W
 This JMeter Plugin allows to write load test data on-the-fly to InfluxDB or ElasticSearch
 
 Additional feature: aggregation of Samplers
+
+Explanations and usage examples on https://gitlab.com/testload/jmeter-listener/wikis/Main.
