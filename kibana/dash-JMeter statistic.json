@@ -1,0 +1,18 @@
+[
+  {
+    "_id": "c8cd6600-c41d-11e8-9f75-01aa2de32e20",
+    "_type": "dashboard",
+    "_source": {
+      "title": "JMeter статистика",
+      "hits": 0,
+      "description": "",
+      "panelsJSON": "[{\"embeddableConfig\":{},\"gridData\":{\"x\":0,\"y\":0,\"w\":30,\"h\":6,\"i\":\"4\"},\"id\":\"62f72170-c424-11e8-9f75-01aa2de32e20\",\"panelIndex\":\"4\",\"type\":\"visualization\",\"version\":\"6.4.0\"},{\"embeddableConfig\":{},\"gridData\":{\"x\":0,\"y\":18,\"w\":48,\"h\":19,\"i\":\"5\"},\"id\":\"75196f90-c427-11e8-9f75-01aa2de32e20\",\"panelIndex\":\"5\",\"type\":\"visualization\",\"version\":\"6.4.0\"},{\"embeddableConfig\":{\"vis\":{\"legendOpen\":false}},\"gridData\":{\"x\":16,\"y\":6,\"w\":31,\"h\":12,\"i\":\"6\"},\"id\":\"2b3d8fa0-c42c-11e8-9f75-01aa2de32e20\",\"panelIndex\":\"6\",\"type\":\"visualization\",\"version\":\"6.4.0\"},{\"embeddableConfig\":{\"vis\":{\"defaultColors\":{\"0 - 500\":\"rgb(165,0,38)\",\"1000 - 5000\":\"rgb(0,104,55)\",\"500 - 1000\":\"rgb(255,255,190)\"},\"legendOpen\":false}},\"gridData\":{\"x\":0,\"y\":6,\"w\":16,\"h\":12,\"i\":\"7\"},\"id\":\"5acf15d0-c432-11e8-9f75-01aa2de32e20\",\"panelIndex\":\"7\",\"type\":\"visualization\",\"version\":\"6.4.0\"}]",
+      "optionsJSON": "{\"darkTheme\":false,\"hidePanelTitles\":true,\"useMargins\":false}",
+      "version": 1,
+      "timeRestore": false,
+      "kibanaSavedObjectMeta": {
+        "searchSourceJSON": "{\"query\":{\"language\":\"lucene\",\"query\":\"\"},\"filter\":[]}"
+      }
+    }
+  }
+]
