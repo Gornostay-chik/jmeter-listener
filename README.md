@@ -6,4 +6,4 @@ This JMeter Plugin allows to write load test data on-the-fly to InfluxDB or Elas
 
 Additional feature: aggregation of Samplers
 
-Explanations and usage examples on https://gitlab.com/testload/jmeter-listener/wikis/Main.
+Explanations and usage examples on [project wiki](https://gitlab.com/testload/jmeter-listener/wikis/1.-Main).
