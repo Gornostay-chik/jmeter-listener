@@ -6,10 +6,10 @@
 
     <groupId>cloud.testload</groupId>
     <artifactId>jmeter.pack-listener</artifactId>
-    <version>1.1-SNAPSHOT</version>
+    <version>1.2-SNAPSHOT</version>
     <packaging>jar</packaging>
     <name>JMeterPackListener</name>
-    <description>JMeter Backend Listener is a JMeter plugin enabling you to send SampleResults to ElasticSearch or InfluxDB</description>
+    <description>JMeter Backend Listener is a JMeter plugin enabling you to send SampleResults to ElasticSearch, InfluxDB, ClickHouse</description>
     <url>https://gitlab.com/testload/jmeter-listener</url>
 
     <licenses>

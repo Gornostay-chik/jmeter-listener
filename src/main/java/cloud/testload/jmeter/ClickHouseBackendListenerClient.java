@@ -1,5 +1,6 @@
 package cloud.testload.jmeter;
 
+import java.sql.*;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -18,19 +19,13 @@ import org.apache.jorphan.logging.LoggingManager;
 import org.apache.log.Logger;
 
 import java.math.BigInteger;
-import java.sql.Array;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 import ru.yandex.clickhouse.ClickHouseArray;
 import ru.yandex.clickhouse.ClickHouseDataSource;
 import ru.yandex.clickhouse.settings.ClickHouseProperties;
+import cloud.testload.jmeter.JMPoint;
 
 
 
@@ -60,7 +55,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
     private static final String KEY_SAMPLERS_LIST = "samplersList";
     private static final String KEY_RECORD_SUB_SAMPLES = "recordSubSamples";
     private static final String KEY_RECORD_GROUP_BY = "groupBy";
-    private static final String KEY_RECORD_GROUP_BY_COUNT = "groupByCount";
+    private static final String KEY_RECORD_GROUP_BY_COUNT = "groupByCountOrBatchSize";
 
     /**
      * Constants.
@@ -130,19 +125,107 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
      * Processes sampler results.
      */
     public void handleSampleResults(List<SampleResult> sampleResults, BackendListenerContext context) {
-    }
+        // Gather only regex results to array
+        sampleResults.forEach(it -> {
+            //write every filtered result to array
+            if (checkFilter(it)) {
+                getUserMetrics().add(it);
+                allSampleResults.add(it);
+            }
+            if (recordSubSamples) {
+                //write every filtered sub_result to array
+                for (SampleResult subResult : it.getSubResults()) {
+                    if (checkFilter(subResult)) {
+                        getUserMetrics().add(subResult);
+                        allSampleResults.add(subResult);
+                    }
+                }
+            }
+        });
+
+        //Flush point(s) every group by Count
+        if (allSampleResults.size() >= groupByCount) {
+            if (groupBy) {
+                flushAggregatedBatchPoints();
+            }else flushBatchPoints();
+        }
+    };
 
     private boolean checkFilter(SampleResult sample){
         return 	((null != regexForSamplerList && sample.getSampleLabel().matches(regexForSamplerList)) || samplersToFilter.contains(sample.getSampleLabel()));
     }
 
     //Save one-item-array to DB
-    private void flushPoint()
-    {
+    private void flushBatchPoints() {
+        try {
+            PreparedStatement point = connection.prepareStatement("insert into jmresults (timestamp, timestamp_micro, profile_name, run_id, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+            allSampleResults.forEach(it -> {
+                try {
+                    point.setTimestamp(1,new Timestamp(it.getTimeStamp()));
+                    point.setLong(2, it.getTimeStamp());
+                    point.setString(3, profileName);
+                    point.setString(4, runId);
+                    point.setString(5, it.getThreadName());
+                    point.setString(6, it.getSampleLabel());
+                    point.setInt(7, 1);
+                    point.setInt(8, it.getErrorCount());
+                    point.setDouble(9, it.getTime());
+                    point.setString(10, it.getSamplerData().toString());
+                    point.setString(11, it.getResponseDataAsString());
+                    point.addBatch();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            point.executeBatch();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        allSampleResults.clear();
     }
     //Aggregate and Save array to DB
-    private void flushPoints()
+    private void flushAggregatedBatchPoints()
     {
+        //group aggregation
+        final Map<String,JMPoint> samplesTst = allSampleResults.stream().collect(Collectors.groupingBy(SampleResult::getSampleLabel,
+                Collectors.collectingAndThen(Collectors.toList(), list -> {
+                            long errorsCount = list.stream().collect(Collectors.summingLong(SampleResult::getErrorCount));
+                            long count = list.stream().collect(Collectors.counting());
+                            double average = list.stream().collect(Collectors.averagingDouble(SampleResult::getTime));
+                            return new JMPoint("aggregate",errorsCount,count, average);
+                        }
+                )));
+        //save aggregates to DB
+        try {
+            PreparedStatement point = connection.prepareStatement("insert into jmresults (timestamp, timestamp_micro, profile_name, run_id, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+            samplesTst.forEach((pointName,pointData)-> {
+                try {
+                    //TODO:need fix to correct timestamp calculation for Batch
+                    point.setTimestamp(1,new Timestamp( System.currentTimeMillis()*1000));
+                    point.setLong(2,  System.currentTimeMillis()*1000);
+                    point.setString(3, profileName);
+                    point.setString(4, runId);
+                    point.setString(5, pointData.getThreadName());
+                    point.setString(6, pointName);
+                    point.setLong(7, pointData.getPointsCount());
+                    point.setLong(8, pointData.getErrorCount());
+                    point.setDouble(9, pointData.getAverageTimeInt());
+                    point.setString(10, "none");
+                    point.setString(11, "none");
+                    point.addBatch();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            });
+
+            point.executeBatch();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        allSampleResults.clear();
     }
 
     /**
@@ -175,14 +258,10 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
         groupBy = context.getBooleanParameter(KEY_RECORD_GROUP_BY, false);
         groupByCount = context.getIntParameter(KEY_RECORD_GROUP_BY_COUNT, 100);
 
-
         setupClickHouseClient(context);
-
         parseSamplers(context);
         scheduler = Executors.newScheduledThreadPool(1);
-
         scheduler.scheduleAtFixedRate(this, 1, 1, TimeUnit.SECONDS);
-
         // Indicates whether to write sub sample records to the database
         recordSubSamples = Boolean.parseBoolean(context.getParameter(KEY_RECORD_SUB_SAMPLES, "false"));
     }
@@ -190,6 +269,9 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
     @Override
     public void teardownTest(BackendListenerContext context) throws Exception {
         LOGGER.info("Shutting down clickHouse scheduler...");
+        if (groupBy) {
+            flushAggregatedBatchPoints();
+        }else flushBatchPoints();
         super.teardownTest(context);
     }
 
@@ -214,6 +296,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
      * Creates the configured database in clickhouse if it does not exist yet.
      */
     private void createDatabaseIfNotExistent() {
+        //TODO: fix autocreation script
         /*
         * create table jmresults
 (
