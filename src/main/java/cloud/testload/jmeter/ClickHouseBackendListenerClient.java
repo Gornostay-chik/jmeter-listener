@@ -327,34 +327,12 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                 ")\n" +
                 "engine = MergeTree()\n" +
                 "ORDER BY (timestamp_sec,timestamp_millis,profile_name,run_id,sample_label)\n" +
-                "PARTITION BY toYYYYMM(timestamp)";
+                "PARTITION BY toYYYYMM(timestamp_sec)";
         try {
             connection.createStatement().execute(dbtemplate);
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        //TODO: debug autocreation script
-        /*
-        * create table jmresults
-(
-	timestamp_sec DateTime,
-	timestamp_millis UInt64,
-	profile_name String,
-	run_id String,
-	thread_name String,
-	sample_label String,
-	points_count UInt64,
-	errors_count UInt64,
-	average_time Float64,
-	request String,
-	response String
-)
-engine = MergeTree()
-ORDER BY (timestamp_sec,timestamp_millis,profile_name,run_id,sample_label)
-PARTITION BY toYYYYMM(timestamp)
-        * */
-
-
     }
 
     /**
