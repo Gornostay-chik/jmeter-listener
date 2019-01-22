@@ -176,7 +176,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                     point.setDouble(9, it.getTime());
                     switch (recordLevel){
                         case "debug":
-                            point.setString(10, it.getSamplerData().toString());
+                            point.setString(10, it.getSamplerData());
                             point.setString(11, it.getResponseDataAsString());
                             break;
                         default:
