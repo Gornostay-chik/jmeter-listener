@@ -299,6 +299,8 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
         clickhouseConfig= new ClickHouseConfig(context);
         ClickHouseProperties properties = new ClickHouseProperties();
         properties.setCompress(true);
+        properties.setUser(clickhouseConfig.getClickhouseUser());
+        properties.setPassword(clickhouseConfig.getClickhousePassword());
         clickHouse = new ClickHouseDataSource("jdbc:clickhouse://"+clickhouseConfig.getClickhouseURL(), properties);
         try {
             connection = clickHouse.getConnection();
