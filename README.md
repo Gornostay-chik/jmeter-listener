@@ -4,10 +4,10 @@
 
 This project is a partial fork of https://github.com/NovaTecConsulting/JMeter-InfluxDB-Writer and https://github.com/delirius325/jmeter-elasticsearch-backend-listener projects
 
-This JMeter Plugin allows to write load test data on-the-fly to InfluxDB, ElasticSearch, ClickHouse (on testing currently)
+This JMeter Plugin allows to write load test data on-the-fly to InfluxDB, ElasticSearch, ClickHouse
 
 Additional feature: aggregation of Samplers
 
-Explanations and usage examples on [project wiki](https://gitlab.com/testload/jmeter-listener/wikis/1.-Main). ClickHouse usage example will be updated soon.
+Explanations and usage examples on [project wiki](https://gitlab.com/testload/jmeter-listener/wikis/1.-Main). 
 
 Strongly recommended use [chproxy](https://github.com/Vertamedia/chproxy) ([docker image](https://hub.docker.com/r/tacyuuhon/clickhouse-chproxy/)) for ClickHouse
