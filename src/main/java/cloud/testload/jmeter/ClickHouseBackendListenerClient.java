@@ -230,7 +230,6 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                     e.printStackTrace();
                 }
             });
-
             point.executeBatch();
         } catch (SQLException e) {
             e.printStackTrace();
