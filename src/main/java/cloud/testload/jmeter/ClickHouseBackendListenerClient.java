@@ -312,7 +312,10 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
      * Creates the configured database in clickhouse if it does not exist yet.
      */
     private void createDatabaseIfNotExistent() {
-        String dbtemplate="create table IF NOT EXISTS jmresults\n" +
+        String dbtemplate_database="create database IF NOT EXISTS " + clickhouseConfig.getClickhouseDatabase();
+
+        String dbtemplate_data="create table IF NOT EXISTS " +
+                clickhouseConfig.getClickhouseDatabase()+".jmresults_data\n" +
                 "(\n" +
                 "\ttimestamp_sec DateTime,\n" +
                 "\ttimestamp_millis UInt64,\n" +
@@ -329,8 +332,47 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                 "engine = MergeTree()\n" +
                 "ORDER BY (timestamp_sec,timestamp_millis,profile_name,run_id,sample_label)\n" +
                 "PARTITION BY toYYYYMM(timestamp_sec)";
+
+        String dbtemplate_buff="create table IF NOT EXISTS " +
+                clickhouseConfig.getClickhouseDatabase()+".jmresults\n" +
+                "(\n" +
+                "\ttimestamp_sec DateTime,\n" +
+                "\ttimestamp_millis UInt64,\n" +
+                "\tprofile_name String,\n" +
+                "\trun_id String,\n" +
+                "\tthread_name String,\n" +
+                "\tsample_label String,\n" +
+                "\tpoints_count UInt64,\n" +
+                "\terrors_count UInt64,\n" +
+                "\taverage_time Float64,\n" +
+                "\trequest String,\n" +
+                "\tresponse String\n" +
+                ")\n" +
+                "engine = Buffer(" +
+                clickhouseConfig.getClickhouseDatabase()+", jmresults_data, 16, 10, 60, 10000, 100000, 1000000, 10000000)";
+
+        String dbtemplate_stats="CREATE MATERIALIZED VIEW IF NOT EXISTS " +
+                clickhouseConfig.getClickhouseDatabase()+".jmresults_statistic (timestamp_sec DateTime, timestamp_millis UInt64,\n" +
+                "                                                      profile_name String, run_id String, thread_name String,\n" +
+                "                                                      sample_label String, points_count UInt64, errors_count UInt64,\n" +
+                "                                                      average_time Float64) " +
+                "ENGINE = MergeTree() PARTITION BY toYYYYMM(timestamp_sec) ORDER BY (profile_name, run_id, sample_label) SETTINGS index_granularity = 8192 AS\n" +
+                "SELECT timestamp_sec,\n" +
+                "       timestamp_millis,\n" +
+                "       profile_name,\n" +
+                "       run_id,\n" +
+                "       thread_name,\n" +
+                "       sample_label,\n" +
+                "       points_count,\n" +
+                "       errors_count,\n" +
+                "       average_time\n" +
+                "FROM " +
+                clickhouseConfig.getClickhouseDatabase()+".jmresults_data";
         try {
-            connection.createStatement().execute(dbtemplate);
+            connection.createStatement().execute(dbtemplate_database);
+            connection.createStatement().execute(dbtemplate_data);
+            connection.createStatement().execute(dbtemplate_buff);
+            connection.createStatement().execute(dbtemplate_stats);
         } catch (SQLException e) {
             e.printStackTrace();
         }
