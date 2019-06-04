@@ -27,6 +27,9 @@ import ru.yandex.clickhouse.ClickHouseDataSource;
 import ru.yandex.clickhouse.settings.ClickHouseProperties;
 import cloud.testload.jmeter.JMPoint;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
 
 
 /**
@@ -75,6 +78,10 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
      */
     private String profileName;
 
+    /**
+     * Name of the host(locahost or container  etc)
+     */
+    private String hostname;
     /**
      * A unique identifier for a single execution (aka 'run') of a load test.
      * In a CI/CD automated performance test, a Jenkins or Bamboo build id would be a good value for this.
@@ -161,27 +168,28 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
     //Save one-item-array to DB
     private void flushBatchPoints() {
         try {
-            PreparedStatement point = connection.prepareStatement("insert into jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
-                    " VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+            PreparedStatement point = connection.prepareStatement("insert into jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
             allSampleResults.forEach(it -> {
                 try {
                     point.setTimestamp(1,new Timestamp(it.getTimeStamp()));
                     point.setLong(2, it.getTimeStamp());
                     point.setString(3, profileName);
                     point.setString(4, runId);
-                    point.setString(5, it.getThreadName());
-                    point.setString(6, it.getSampleLabel());
-                    point.setInt(7, 1);
-                    point.setInt(8, it.getErrorCount());
-                    point.setDouble(9, it.getTime());
+                    point.setString(5, hostname);
+                    point.setString(6, it.getThreadName());
+                    point.setString(7, it.getSampleLabel());
+                    point.setInt(8, 1);
+                    point.setInt(9, it.getErrorCount());
+                    point.setDouble(10, it.getTime());
                     switch (recordLevel){
                         case "debug":
-                            point.setString(10, it.getSamplerData());
-                            point.setString(11, it.getResponseDataAsString());
+                            point.setString(11, it.getSamplerData());
+                            point.setString(12, it.getResponseDataAsString());
                             break;
                         default:
-                            point.setString(10, "");
                             point.setString(11, "");
+                            point.setString(12, "");
                             break;
                     }
                     point.addBatch();
@@ -210,21 +218,22 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                 )));
         //save aggregates to DB
         try {
-            PreparedStatement point = connection.prepareStatement("insert into jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
-                    " VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+            PreparedStatement point = connection.prepareStatement("insert into jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
             samplesTst.forEach((pointName,pointData)-> {
                 try {
                     point.setTimestamp(1,new Timestamp(System.currentTimeMillis()));
                     point.setLong(2,  System.currentTimeMillis());
                     point.setString(3, profileName);
                     point.setString(4, runId);
-                    point.setString(5, pointData.getThreadName());
-                    point.setString(6, pointName);
-                    point.setLong(7, pointData.getPointsCount());
-                    point.setLong(8, pointData.getErrorCount());
-                    point.setDouble(9, pointData.getAverageTimeInt());
-                    point.setString(10, "");
+                    point.setString(5, hostname);
+                    point.setString(6, pointData.getThreadName());
+                    point.setString(7, pointName);
+                    point.setLong(8, pointData.getPointsCount());
+                    point.setLong(9, pointData.getErrorCount());
+                    point.setDouble(10, pointData.getAverageTimeInt());
                     point.setString(11, "");
+                    point.setString(12, "");
                     point.addBatch();
                 } catch (SQLException e) {
                     e.printStackTrace();
@@ -269,6 +278,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
         groupBy = context.getBooleanParameter(KEY_RECORD_GROUP_BY, false);
         groupByCount = context.getIntParameter(KEY_RECORD_GROUP_BY_COUNT, 100);
         recordLevel=context.getParameter(KEY_RECORD_LEVEL,"info");
+        hostname=getHostname();
 
         setupClickHouseClient(context);
         createDatabaseIfNotExistent();
@@ -321,6 +331,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                 "\ttimestamp_millis UInt64,\n" +
                 "\tprofile_name String,\n" +
                 "\trun_id String,\n" +
+                "\thostname String,\n" +
                 "\tthread_name String,\n" +
                 "\tsample_label String,\n" +
                 "\tpoints_count UInt64,\n" +
@@ -340,6 +351,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                 "\ttimestamp_millis UInt64,\n" +
                 "\tprofile_name String,\n" +
                 "\trun_id String,\n" +
+                "\thostname String,\n" +
                 "\tthread_name String,\n" +
                 "\tsample_label String,\n" +
                 "\tpoints_count UInt64,\n" +
@@ -352,16 +364,14 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                 clickhouseConfig.getClickhouseDatabase()+", jmresults_data, 16, 10, 60, 10000, 100000, 1000000, 10000000)";
 
         String dbtemplate_stats="CREATE MATERIALIZED VIEW IF NOT EXISTS " +
-                clickhouseConfig.getClickhouseDatabase()+".jmresults_statistic (timestamp_sec DateTime, timestamp_millis UInt64,\n" +
-                "                                                      profile_name String, run_id String, thread_name String,\n" +
-                "                                                      sample_label String, points_count UInt64, errors_count UInt64,\n" +
-                "                                                      average_time Float64) " +
+                clickhouseConfig.getClickhouseDatabase()+".jmresults_statistic " +
                 "ENGINE = MergeTree() PARTITION BY toYYYYMM(timestamp_sec) ORDER BY (profile_name, run_id, sample_label) SETTINGS index_granularity = 8192 AS\n" +
                 "SELECT timestamp_sec,\n" +
                 "       timestamp_millis,\n" +
                 "       profile_name,\n" +
                 "       run_id,\n" +
                 "       thread_name,\n" +
+                "       hostname,\n" +
                 "       sample_label,\n" +
                 "       points_count,\n" +
                 "       errors_count,\n" +
@@ -397,5 +407,14 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                 samplersToFilter.add(samplerName);
             }
         }
+    }
+
+    /**
+     * internal hostname function
+     */
+    private static String getHostname() throws UnknownHostException {
+        InetAddress iAddress = InetAddress.getLocalHost();
+        String hostName = iAddress.getHostName();
+        return hostName;
     }
 }
