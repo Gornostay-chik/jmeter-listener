@@ -344,25 +344,6 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                 "ORDER BY (timestamp_sec,timestamp_millis,profile_name,run_id,sample_label)\n" +
                 "PARTITION BY toYYYYMM(timestamp_sec)";
 
-//        String dbtemplate_buff="create table IF NOT EXISTS " +
-//                clickhouseConfig.getClickhouseDatabase()+".jmresults\n" +
-//                "(\n" +
-//                "\ttimestamp_sec DateTime,\n" +
-//                "\ttimestamp_millis UInt64,\n" +
-//                "\tprofile_name String,\n" +
-//                "\trun_id String,\n" +
-//                "\thostname String,\n" +
-//                "\tthread_name String,\n" +
-//                "\tsample_label String,\n" +
-//                "\tpoints_count UInt64,\n" +
-//                "\terrors_count UInt64,\n" +
-//                "\taverage_time Float64,\n" +
-//                "\trequest String,\n" +
-//                "\tresponse String\n" +
-//                ")\n" +
-//                "engine = Buffer(" +
-//                clickhouseConfig.getClickhouseDatabase()+", jmresults_data, 16, 10, 60, 10000, 100000, 1000000, 10000000)";
-
         String dbtemplate_stats="CREATE MATERIALIZED VIEW IF NOT EXISTS " +
                 clickhouseConfig.getClickhouseDatabase()+".jmresults_statistic " +
                 "ENGINE = MergeTree() PARTITION BY toYYYYMM(timestamp_sec) ORDER BY (timestamp_sec, profile_name, run_id, hostname, sample_label, thread_name) SETTINGS index_granularity = 8192 AS\n" +

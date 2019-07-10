@@ -12,4 +12,4 @@ Explanations and usage examples on [project wiki](https://gitlab.com/testload/jm
 
 Strongly recommended use [chproxy](https://github.com/Vertamedia/chproxy) ([docker image](https://hub.docker.com/r/tacyuuhon/clickhouse-chproxy/)) for ClickHouse
 
-UPD (03 JUNE 2019): New ClickHouseDB scheme used - jmresults(buffer)->jmresults_data(ops storage with extended data request/response)->jmresults_statistic(mat view as archive storage).
+UPD (03 JUNE 2019): New ClickHouseDB scheme used - jmresults(ops storage with extended data request/response)->jmresults_statistic(mat view as archive storage).
