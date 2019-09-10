@@ -280,8 +280,9 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
         recordLevel=context.getParameter(KEY_RECORD_LEVEL,"info");
         hostname=getHostname();
 
-        setupClickHouseClient(context);
+        setupClickHouseClientWithoutDatabase(context);
         createDatabaseIfNotExistent();
+        setupClickHouseClient(context);
         parseSamplers(context);
         scheduler = Executors.newScheduledThreadPool(1);
         scheduler.scheduleAtFixedRate(this, 1, 1, TimeUnit.SECONDS);
@@ -305,6 +306,21 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
      *            {@link BackendListenerContext}.
      */
     private void setupClickHouseClient(BackendListenerContext context) {
+        clickhouseConfig= new ClickHouseConfig(context);
+        ClickHouseProperties properties = new ClickHouseProperties();
+        properties.setCompress(true);
+        properties.setDatabase(clickhouseConfig.getClickhouseDatabase());
+        properties.setUser(clickhouseConfig.getClickhouseUser());
+        properties.setPassword(clickhouseConfig.getClickhousePassword());
+        clickHouse = new ClickHouseDataSource("jdbc:clickhouse://"+clickhouseConfig.getClickhouseURL(), properties);
+        try {
+            connection = clickHouse.getConnection();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void setupClickHouseClientWithoutDatabase(BackendListenerContext context) {
         clickhouseConfig= new ClickHouseConfig(context);
         ClickHouseProperties properties = new ClickHouseProperties();
         properties.setCompress(true);
