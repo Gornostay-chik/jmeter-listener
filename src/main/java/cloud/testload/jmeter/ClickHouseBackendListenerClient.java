@@ -139,14 +139,30 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
         sampleResults.forEach(it -> {
             //write every filtered result to array
             if (checkFilter(it)) {
-                getUserMetrics().add(it);
+//                getUserMetrics().add(it);
+                switch (recordLevel){
+                    case "debug":
+                        it.setSamplerData("");
+                        it.setResponseData("");
+                        break;
+                    default:
+                        break;
+                }
                 allSampleResults.add(it);
             }
             if (recordSubSamples) {
                 //write every filtered sub_result to array
                 for (SampleResult subResult : it.getSubResults()) {
                     if (checkFilter(subResult)) {
-                        getUserMetrics().add(subResult);
+//                        getUserMetrics().add(subResult);
+                        switch (recordLevel){
+                            case "debug":
+                                it.setSamplerData("");
+                                it.setResponseData("");
+                                break;
+                            default:
+                                break;
+                        }
                         allSampleResults.add(subResult);
                     }
                 }
