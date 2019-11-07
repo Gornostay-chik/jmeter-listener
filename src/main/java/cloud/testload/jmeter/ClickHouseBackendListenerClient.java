@@ -141,7 +141,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
             if (checkFilter(it)) {
 //                getUserMetrics().add(it);
                 switch (recordLevel){
-                    case "debug":
+                    case "info":
                         it.setSamplerData("");
                         it.setResponseData("");
                         break;
@@ -156,7 +156,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                     if (checkFilter(subResult)) {
 //                        getUserMetrics().add(subResult);
                         switch (recordLevel){
-                            case "debug":
+                            case "info":
                                 it.setSamplerData("");
                                 it.setResponseData("");
                                 break;
