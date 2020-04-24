@@ -5,8 +5,10 @@ import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.visualizers.backend.AbstractBackendListenerClient;
 import org.apache.jmeter.visualizers.backend.BackendListenerContext;
-import org.apache.jorphan.logging.LoggingManager;
-import org.apache.log.Logger;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import ru.yandex.clickhouse.ClickHouseDataSource;
 import ru.yandex.clickhouse.settings.ClickHouseProperties;
 
@@ -33,7 +35,7 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
     /**
      * Logger.
      */
-    private static final Logger LOGGER = LoggingManager.getLoggerForClass();
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseBackendListenerClient.class);
 
     /**
      * Buffer.
