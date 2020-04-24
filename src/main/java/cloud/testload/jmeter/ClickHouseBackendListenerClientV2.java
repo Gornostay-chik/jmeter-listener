@@ -385,21 +385,21 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
         String dbtemplate_database="create database IF NOT EXISTS " + clickhouseConfig.getClickhouseDatabase();
 
         String dbtemplate_data="create table IF NOT EXISTS " +
-                clickhouseConfig.getClickhouseDatabase()+".jmresults\n" +
+                clickhouseConfig.getClickhouseDatabase()+".jmresults_data\n" +
                 "(\n" +
-                "\ttimestamp_sec DateTime Codec(DoubleDelta, NONE),\n" +
-                "\ttimestamp_millis UInt64 Codec(DoubleDelta, NONE),\n" +
-                "\tprofile_name String Codec(NONE),\n" +
-                "\trun_id String Codec(NONE),\n" +
-                "\thostname String Codec(NONE),\n" +
-                "\tthread_name String Codec(NONE),\n" +
-                "\tsample_label String Codec(NONE),\n" +
-                "\tpoints_count UInt64 Codec(Gorilla, NONE),\n" +
-                "\terrors_count UInt64 Codec(Gorilla, NONE),\n" +
-                "\taverage_time Float64 Codec(Gorilla, NONE),\n" +
-                "\trequest String Codec(LZ4),\n" +
-                "\tresponse String Codec(LZ4),\n" +
-                "\tres_code String Codec(LZ4)\n" +
+                "\ttimestamp_sec DateTime,\n" +
+                "\ttimestamp_millis UInt64,\n" +
+                "\tprofile_name LowCardinality(String),\n" +
+                "\trun_id LowCardinality(String),\n" +
+                "\thostname LowCardinality(String),\n" +
+                "\tthread_name LowCardinality(String),\n" +
+                "\tsample_label LowCardinality(String),\n" +
+                "\tpoints_count UInt64,\n" +
+                "\terrors_count UInt64,\n" +
+                "\taverage_time Float64,\n" +
+                "\trequest String,\n" +
+                "\tresponse String,\n" +
+                "\tres_code LowCardinality(String)\n" +
                 ")\n" +
                 "engine = MergeTree\n" +
                 "PARTITION BY toYYYYMMDD(timestamp_sec)\n" +
@@ -411,15 +411,15 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
                 clickhouseConfig.getClickhouseDatabase()+".jmresults_statistic (\n" +
                 "`timestamp_sec` DateTime Codec(DoubleDelta, LZ4),\n" +
                 "`timestamp_millis` UInt64 Codec(DoubleDelta, LZ4),\n" +
-                "`profile_name` String Codec(LZ4),\n" +
-                "`run_id` String Codec(LZ4),\n" +
-                "`thread_name` String Codec(LZ4),\n" +
+                "`profile_name` LowCardinality(String),\n" +
+                "`run_id` LowCardinality(String),\n" +
+                "`thread_name` LowCardinality(String),\n" +
                 "`hostname` String Codec(LZ4),\n" +
-                "`sample_label` String,\n" +
+                "`sample_label` LowCardinality(String),\n" +
                 "`points_count` UInt64 Codec(Gorilla, LZ4),\n" +
                 "`errors_count` UInt64 Codec(Gorilla, LZ4),\n" +
                 "`average_time` Float64 Codec(Gorilla, LZ4),\n" +
-                "`res_code` String CODEC(LZ4))\n" +
+                "`res_code` LowCardinality(String))\n" +
                 "    ENGINE = MergeTree\n" +
                 "        PARTITION BY toYYYYMM(timestamp_sec)\n" +
                 "        ORDER BY (timestamp_sec,\n" +
@@ -427,7 +427,8 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
                 "                  run_id,\n" +
                 "                  hostname,\n" +
                 "                  sample_label,\n" +
-                "                  thread_name)\n" +
+                "                  thread_name,\n" +
+                "                  res_code)\n" +
                 "        SETTINGS index_granularity = 8192\n" +
                 "AS\n" +
                 "SELECT timestamp_sec,\n" +
@@ -442,11 +443,30 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
                 "       average_time,\n" +
                 "       res_code\n" +
                 "FROM " +
-                clickhouseConfig.getClickhouseDatabase()+".jmresults";
+                clickhouseConfig.getClickhouseDatabase()+".jmresults_data";
+
+        String dbtemplate_buff="create table IF NOT EXISTS " +
+                clickhouseConfig.getClickhouseDatabase()+".jmresults\n" +
+                "(\n" +
+                "\ttimestamp_sec DateTime,\n" +
+                "\ttimestamp_millis UInt64,\n" +
+                "\tprofile_name LowCardinality(String),\n" +
+                "\trun_id LowCardinality(String),\n" +
+                "\thostname LowCardinality(String),\n" +
+                "\tthread_name LowCardinality(String),\n" +
+                "\tsample_label LowCardinality(String),\n" +
+                "\tpoints_count UInt64,\n" +
+                "\terrors_count UInt64,\n" +
+                "\taverage_time Float64,\n" +
+                "\trequest String,\n" +
+                "\tresponse String,\n" +
+                "\tres_code LowCardinality(String)\n" +
+                ")\n" +
+                "engine = Buffer("+clickhouseConfig.getClickhouseDatabase()+", jmresults_data, 16, 10, 60, 10000, 100000, 1000000, 10000000)";
         try {
             connection.createStatement().execute(dbtemplate_database);
             connection.createStatement().execute(dbtemplate_data);
-//            connection.createStatement().execute(dbtemplate_buff);
+            connection.createStatement().execute(dbtemplate_buff);
             connection.createStatement().execute(dbtemplate_stats);
         } catch (SQLException e) {
             e.printStackTrace();

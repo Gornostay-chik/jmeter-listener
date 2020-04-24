@@ -13,3 +13,22 @@ Explanations and usage examples on [project wiki](https://gitlab.com/testload/jm
 Strongly recommended use [chproxy](https://github.com/Vertamedia/chproxy) ([docker image](https://hub.docker.com/r/tacyuuhon/clickhouse-chproxy/)) for ClickHouse
 
 UPD (03 JUNE 2019): New ClickHouseDB scheme used - jmresults(ops storage with extended data request/response)->jmresults_statistic(mat view as archive storage).
+
+UPD (29 NOV 2019): V2 class!:
+1. New scheme - 
+    jmresults(memory buffer) -> 
+    jmresults_data(temp ops storage with extended data request/response and TTL 7 days) ->
+    jmresults_statistic(mat view as archive storage)
+   +++ res_code field in database
+   
+2. Minus group_by .... Plus new "aggregate" log level
+3. New error log level - like "info" but if error add Req/Resp
+4. few memory usage optimizations
+5. new Grafana dashboards (soon...)
+
+Many thanks for support from:
+
+[JetBrains](https://www.jetbrains.com/opensource/)
+
+[Atlassian](https://www.atlassian.com/software/views/open-source-license-request)
+
