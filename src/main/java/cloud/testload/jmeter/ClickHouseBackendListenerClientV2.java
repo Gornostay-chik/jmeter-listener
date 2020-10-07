@@ -53,6 +53,7 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
     private static final String KEY_RECORD_GROUP_BY_COUNT = "groupByCount";
     private static final String KEY_RECORD_BATCH_SIZE= "batchSize";
     private static final String KEY_RECORD_LEVEL = "recordDataLevel";
+    private static final String KEY_CREATE_DEF = "createDefinitions";
 
 
     /**
@@ -116,6 +117,11 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
      * Indicates whether to record Subsamples
      */
     private boolean recordSubSamples;
+
+    /**
+     * Indicates whether to create database/tables
+     */
+    private boolean createDefinitions;
 
     /**
      * Indicates whether to aggregate and level statistic
@@ -313,7 +319,7 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
         arguments.addArgument(KEY_RECORD_GROUP_BY_COUNT, "100");
         arguments.addArgument(KEY_RECORD_BATCH_SIZE, "1000");
         arguments.addArgument(KEY_RECORD_LEVEL, "info");
-
+        arguments.addArgument(KEY_CREATE_DEF, "true");
         return arguments;
     }
 
@@ -324,6 +330,7 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
         groupByCount = context.getIntParameter(KEY_RECORD_GROUP_BY_COUNT, 100);
         batchSize = context.getIntParameter(KEY_RECORD_BATCH_SIZE, 1000);
         recordLevel=context.getParameter(KEY_RECORD_LEVEL,"info");
+        createDefinitions=Boolean.parseBoolean(context.getParameter(KEY_CREATE_DEF,"true"));
         hostname=getHostname();
 
         setupClickHouseClientWithoutDatabase(context);
@@ -384,6 +391,7 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
      * Creates the configured database in clickhouse if it does not exist yet.
      */
     private void createDatabaseIfNotExistent() {
+
         String dbtemplate_database="create database IF NOT EXISTS " + clickhouseConfig.getClickhouseDatabase();
 
         String dbtemplate_data="create table IF NOT EXISTS " +
@@ -466,10 +474,12 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
                 ")\n" +
                 "engine = Buffer("+clickhouseConfig.getClickhouseDatabase()+", jmresults_data, 16, 10, 60, 10000, 100000, 1000000, 10000000)";
         try {
-            connection.createStatement().execute(dbtemplate_database);
-            connection.createStatement().execute(dbtemplate_data);
-            connection.createStatement().execute(dbtemplate_buff);
-            connection.createStatement().execute(dbtemplate_stats);
+            if (createDefinitions) {
+                connection.createStatement().execute(dbtemplate_database);
+                connection.createStatement().execute(dbtemplate_data);
+                connection.createStatement().execute(dbtemplate_buff);
+                connection.createStatement().execute(dbtemplate_stats);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
