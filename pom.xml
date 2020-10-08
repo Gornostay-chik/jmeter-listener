@@ -43,7 +43,7 @@
         <org.apache.commons>3.7</org.apache.commons>
         <org.elasticsearch.client>6.4.0</org.elasticsearch.client>
         <org.influxdb.influxdb-java>2.15</org.influxdb.influxdb-java>
-        <ru.yandex.clickhouse.clickhouse-jdbc>0.1.52</ru.yandex.clickhouse.clickhouse-jdbc>
+        <ru.yandex.clickhouse.clickhouse-jdbc>0.2.4</ru.yandex.clickhouse.clickhouse-jdbc>
     </properties>
     <dependencies>
         <dependency>

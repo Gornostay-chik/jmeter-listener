@@ -10,7 +10,7 @@ Additional feature: aggregation of Samplers
 
 Explanations and usage examples on [project wiki](https://gitlab.com/testload/jmeter-listener/wikis/1.-Main). 
 
-Strongly recommended use [chproxy](https://github.com/Vertamedia/chproxy) ([docker image](https://hub.docker.com/r/tacyuuhon/clickhouse-chproxy/)) for ClickHouse
+Strongly recommended use [clickhouse_bulk](https://github.com/nikepan/clickhouse-bulk) ([docker image](https://hub.docker.com/r/nikepan/clickhouse-bulk/)) - brilliant INSERT bulkizator for ClickHouse
 
 UPD (03 JUNE 2019): New ClickHouseDB scheme used - jmresults(ops storage with extended data request/response)->jmresults_statistic(mat view as archive storage).
 
