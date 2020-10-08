@@ -208,7 +208,7 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
     //Save one-item-array to DB
     private void flushBatchPoints() {
         try {
-            PreparedStatement point = connection.prepareStatement("insert into jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response, res_code)" +
+            PreparedStatement point = connection.prepareStatement("INSERT INTO jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response, res_code)" +
                     " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
             allSampleResults.forEach(it -> {
                 try {
@@ -269,7 +269,7 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
                 )));
         //save aggregates to DB
         try {
-            PreparedStatement point = connection.prepareStatement("insert into jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
+            PreparedStatement point = connection.prepareStatement("INSERT INTO jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
                     " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
             samplesTst.forEach((pointName,pointData)-> {
                 try {
