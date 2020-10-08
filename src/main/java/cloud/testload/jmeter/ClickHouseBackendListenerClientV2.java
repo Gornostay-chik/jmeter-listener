@@ -365,6 +365,8 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
         properties.setDatabase(clickhouseConfig.getClickhouseDatabase());
         properties.setUser(clickhouseConfig.getClickhouseUser());
         properties.setPassword(clickhouseConfig.getClickhousePassword());
+        properties.setConnectionTimeout(60000); //hardcode to 60 sec
+        properties.setSocketTimeout(60000); //hardcode to 60 sec
         clickHouse = new ClickHouseDataSource("jdbc:clickhouse://"+clickhouseConfig.getClickhouseURL(), properties);
         try {
             connection = clickHouse.getConnection();
