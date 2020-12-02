@@ -20,6 +20,7 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 
@@ -32,12 +33,12 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
     /**
      * Logger.
      */
-    private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseBackendListenerClient.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseBackendListenerClientV2.class);
 
     /**
      * Buffer.
      */
-    private static final List<SampleResult> allSampleResults = new ArrayList<SampleResult>();
+    private static final List<SampleResult> allSampleResults = new ArrayList();
 
     /**
      * Parameter Keys.
@@ -131,7 +132,7 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
     /**
      * Processes sampler results.
      */
-    public void handleSampleResults(List<SampleResult> sampleResults, BackendListenerContext context) {
+    public synchronized void handleSampleResults(List<SampleResult> sampleResults, BackendListenerContext context) {
         // Gather only regex results to array
         sampleResults.forEach(it -> {
             //write every filtered result to array
@@ -190,8 +191,9 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
     //Save one-item-array to DB
     private void flushBatchPoints() {
         try {
-            PreparedStatement point = connection.prepareStatement("INSERT INTO jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response, res_code)" +
-                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            PreparedStatement point = connection.prepareStatement(
+                    "INSERT INTO jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response, res_code)" +
+                            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
             allSampleResults.forEach(it -> {
                 try {
                     point.setTimestamp(1, new Timestamp(it.getTimeStamp()));
