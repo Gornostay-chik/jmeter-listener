@@ -4,7 +4,7 @@
 [![Javadocs](https://www.javadoc.io/badge/cloud.testload/jmeter.pack-listener.svg)](https://www.javadoc.io/doc/cloud.testload/jmeter.pack-listener)
 ![pipeline](https://gitlab.com/testload/jmeter-listener/badges/master/build.svg?job=build)
 
-This JMeter Plugin allows to write load test data on-the-fly to ClickHouse, InfluxDB, ElasticSearch (This project is a partial fork of https://github.com/NovaTecConsulting/JMeter-InfluxDB-Writer and https://github.com/delirius325/jmeter-elasticsearch-backend-listener projects)
+This JMeter Plugin allows to write load test data on-the-fly to ClickHouse
 
 Additional feature: aggregation of Samplers
 
@@ -25,6 +25,8 @@ UPD (29 NOV 2019): V2 class!:
 3. New error log level - like "info" but if error add Req/Resp
 4. few memory usage optimizations
 5. new Grafana dashboards (soon...)
+
+UPD (03 DEC 2020): minus Influx, minus Elastic
 
 Many thanks for support from:
 
