@@ -80,16 +80,6 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.elasticsearch.client</groupId>
-            <artifactId>elasticsearch-rest-client</artifactId>
-            <version>${org.elasticsearch.client}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.influxdb</groupId>
-            <artifactId>influxdb-java</artifactId>
-            <version>${org.influxdb.influxdb-java}</version>
-        </dependency>
-        <dependency>
             <groupId>ru.yandex.clickhouse</groupId>
             <artifactId>clickhouse-jdbc</artifactId>
             <version>${ru.yandex.clickhouse.clickhouse-jdbc}</version>
