@@ -7,7 +7,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import cloud.testload.jmeter.config.influxdb.TestStartEndMeasurement;
 import main.java.cloud.testload.jmeter.config.clickhouse.ClickHouseConfig;
 import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.samplers.SampleResult;
