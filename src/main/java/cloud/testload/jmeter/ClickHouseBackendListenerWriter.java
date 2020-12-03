@@ -1,6 +1,6 @@
 package cloud.testload.jmeter;
 
-import main.java.cloud.testload.jmeter.config.clickhouse.ClickHouseConfig;
+import cloud.testload.jmeter.config.clickhouse.ClickHouseConfig;
 import org.apache.jmeter.config.Arguments;
 import org.apache.jmeter.samplers.SampleResult;
 import org.apache.jmeter.visualizers.backend.AbstractBackendListenerClient;
@@ -26,17 +26,16 @@ import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
-
 /**
  * Backend listener that writes JMeter metrics to ClickHouse directly.
  *
  * @author Alexander Babaev (minor changes and improvements)
  */
-public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerClient implements Runnable {
+public class ClickHouseBackendListenerWriter extends AbstractBackendListenerClient implements Runnable {
     /**
      * Logger.
      */
-    private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseBackendListenerClientV2.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseBackendListenerWriter.class);
 
     /**
      * Buffer.

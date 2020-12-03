@@ -1,4 +1,4 @@
-package main.java.cloud.testload.jmeter.config.clickhouse;
+package cloud.testload.jmeter.config.clickhouse;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.jmeter.visualizers.backend.BackendListenerContext;

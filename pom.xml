@@ -5,12 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>cloud.testload</groupId>
-    <artifactId>jmeter.pack-listener</artifactId>
-    <version>2.08</version>
+    <artifactId>jmeter-clickhouse-listener</artifactId>
+    <version>2.02</version>
     <packaging>jar</packaging>
-    <name>JMeterPackListener</name>
+    <name>JMeterClickhouseListener</name>
     <description>JMeter Backend Listener is a JMeter plugin enabling you to send SampleResults to ClickHouse</description>
-    <url>https://gitlab.com/testload/jmeter-listener</url>
+    <url>https://gitlab.com/testload-group/jmeter-clickhouse-listener</url>
 
     <licenses>
         <license>
@@ -21,7 +21,7 @@
     </licenses>
 
     <scm>
-        <url>https://gitlab.com/testload/jmeter-listener.git</url>
+        <url>https://gitlab.com/testload-group/jmeter-clickhouse-listener.git</url>
     </scm>
 
     <developers>
@@ -30,6 +30,13 @@
             <name>Alexander Babaev</name>
             <email>testload@icloud.com</email>
             <url>https://gitlab.com/testload</url>
+            <timezone>Europe/Moscow</timezone>
+        </developer>
+        <developer>
+            <id>ognivo777</id>
+            <name>Vladimir Taran</name>
+            <email></email>
+            <url>https://gitlab.com/ognivo777</url>
             <timezone>Europe/Moscow</timezone>
         </developer>
     </developers>
@@ -87,11 +94,13 @@
     </dependencies>
     <distributionManagement>
         <snapshotRepository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <id>sonatype</id>
+            <name>Nexus Snapshot Repository</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
         </snapshotRepository>
         <repository>
-            <id>ossrh</id>
+            <id>sonatype</id>
+            <name>Nexus Release Repository</name>
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>
     </distributionManagement>
@@ -100,32 +109,34 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
-                <version>1.5</version>
+                <version>1.6</version>
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
-                        <phase>verify</phase>
+                        <!-- Сборка будет падать, если отсутствует GPG ключ -->
+                        <!-- Подписываем артефакты только на фазе deploy -->
+                        <phase>deploy</phase>
                         <goals>
                             <goal>sign</goal>
                         </goals>
+                        <configuration>
+                            <!-- This is necessary for gpg to not try to use the pinentry programs -->
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
                 <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.7</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <serverId>ossrh</serverId>
-                    <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                    <autoReleaseAfterClose>true</autoReleaseAfterClose>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>2.2.1</version>
+                <version>3.2.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -137,24 +148,25 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.0.1</version>
-                <!--<configuration>-->
-                    <!--<javadocExecutable>${java.home}/bin/javadoc</javadocExecutable>-->
-                <!--</configuration>-->
+                <artifactId>maven-jar-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>attach-javadocs</id>
+                        <id>empty-javadoc-jar</id>
+                        <phase>generate-resources</phase>
                         <goals>
                             <goal>jar</goal>
                         </goals>
+                        <configuration>
+                            <classifier>javadoc</classifier>
+                            <classesDirectory>${basedir}/javadoc</classesDirectory>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>2.10</version>
+                <version>3.1.2</version>
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
@@ -176,20 +188,11 @@
             <plugin>
                 <artifactId>maven-deploy-plugin</artifactId>
                 <version>2.8.1</version>
-                <executions>
-                    <execution>
-                        <id>default-deploy</id>
-                        <phase>deploy</phase>
-                        <goals>
-                            <goal>deploy</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>2.4.1</version>
+                <version>3.2.4</version>
                 <executions>
                     <!-- Run shade goal on package phase -->
                     <execution>
@@ -212,5 +215,29 @@
                 </executions>
             </plugin>
         </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.sonatype.plugins</groupId>
+                    <artifactId>nexus-staging-maven-plugin</artifactId>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <serverId>sonatype</serverId>
+                        <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                        <!-- Обновляем метаданные, чтобы пометить артефакт как release -->
+                        <!-- Не влияет на snapshot версии -->
+                        <updateReleaseInfo>true</updateReleaseInfo>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-deploy-plugin</artifactId>
+                    <configuration>
+                        <!-- Отключаем плагин -->
+                        <skip>true</skip>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 </project>
