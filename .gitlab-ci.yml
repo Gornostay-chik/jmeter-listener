@@ -13,7 +13,7 @@ cache:
 deploy:
   stage: deploy
   script:
-    - printf "${GPG_SECRET_KEY}" | gpg --batch --import
+    - printf "${$GPG_PRIVATE_KEY}" | gpg --batch --import
     - mvn $MAVEN_CLI_OPTS clean deploy
   only:
     - master
