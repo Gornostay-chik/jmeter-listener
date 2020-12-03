@@ -20,6 +20,10 @@ import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 /**
@@ -56,7 +60,6 @@ public class ClickHouseBackendListenerWriter extends AbstractBackendListenerClie
      * Constants.
      */
     private static final String SEPARATOR = ";";
-    private static final int ONE_MS_IN_NANOSECONDS = 1000000;
     /**
      * ClickHouse configuration.
      */
@@ -117,6 +120,12 @@ public class ClickHouseBackendListenerWriter extends AbstractBackendListenerClie
     private int groupByCount;
     private int batchSize;
     private String recordLevel;
+
+    /**
+     * Cached regex matcher for performance purpose.
+     * Suitable only for single thread execution.
+     * */
+    private Matcher regexMatcherForSamplerList;
 
     /**
      * internal hostname function
@@ -183,7 +192,12 @@ public class ClickHouseBackendListenerWriter extends AbstractBackendListenerClie
     }
 
     private boolean checkFilter(SampleResult sample) {
-        return ((null != regexForSamplerList && sample.getSampleLabel().matches(regexForSamplerList)) || samplersToFilter.contains(sample.getSampleLabel()));
+        return (
+                //check RegEx
+                (null != regexMatcherForSamplerList && regexMatcherForSamplerList.reset(sample.getSampleLabel()).matches())
+                //Check by simple list
+                || samplersToFilter.contains(sample.getSampleLabel())
+        );
     }
 
     //Save one-item-array to DB
@@ -474,13 +488,20 @@ public class ClickHouseBackendListenerWriter extends AbstractBackendListenerClie
      */
     private void parseSamplers(BackendListenerContext context) {
         samplersList = context.getParameter(KEY_SAMPLERS_LIST, "");
-        samplersToFilter = new HashSet<String>();
-        if (context.getBooleanParameter(KEY_USE_REGEX_FOR_SAMPLER_LIST, false)) {
+        samplersToFilter = new HashSet();
+        if (context.getBooleanParameter(KEY_USE_REGEX_FOR_SAMPLER_LIST, false) && !samplersList.isEmpty()) {
             regexForSamplerList = samplersList;
+            try {
+                regexMatcherForSamplerList = Pattern.compile(regexForSamplerList).matcher("");
+            } catch (PatternSyntaxException e) {
+                LOGGER.error("Wrong configuration! samplersList value '"+regexMatcherForSamplerList+"' are not correct regular expression! Setting 'useRegexForSamplerList' will  be ignored. ", e);
+                regexMatcherForSamplerList = null;
+                regexForSamplerList = null;
+            }
         } else {
             regexForSamplerList = null;
             String[] samplers = samplersList.split(SEPARATOR);
-            samplersToFilter = new HashSet<String>();
+            samplersToFilter = new HashSet();
             for (String samplerName : samplers) {
                 samplersToFilter.add(samplerName);
             }
