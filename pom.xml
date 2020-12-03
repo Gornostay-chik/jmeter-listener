@@ -5,12 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>cloud.testload</groupId>
-    <artifactId>jmeter.pack-listener</artifactId>
-    <version>2.08</version>
+    <artifactId>jmeter-clickhouse-listener</artifactId>
+    <version>2.00</version>
     <packaging>jar</packaging>
-    <name>JMeterPackListener</name>
+    <name>JMeterClickhouseListener</name>
     <description>JMeter Backend Listener is a JMeter plugin enabling you to send SampleResults to ClickHouse</description>
-    <url>https://gitlab.com/testload/jmeter-listener</url>
+    <url>https://gitlab.com/testload/jmeter-clickhouse-listener</url>
 
     <licenses>
         <license>
@@ -21,7 +21,7 @@
     </licenses>
 
     <scm>
-        <url>https://gitlab.com/testload/jmeter-listener.git</url>
+        <url>https://gitlab.com/testload/jmeter-clickhouse-listener.git</url>
     </scm>
 
     <developers>
@@ -30,6 +30,13 @@
             <name>Alexander Babaev</name>
             <email>testload@icloud.com</email>
             <url>https://gitlab.com/testload</url>
+            <timezone>Europe/Moscow</timezone>
+        </developer>
+        <developer>
+            <id>ognivo777</id>
+            <name>Vladimir Taran</name>
+            <email></email>
+            <url>https://gitlab.com/ognivo777</url>
             <timezone>Europe/Moscow</timezone>
         </developer>
     </developers>
@@ -100,7 +107,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
-                <version>1.5</version>
+                <version>1.6</version>
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
@@ -114,7 +121,7 @@
             <plugin>
                 <groupId>org.sonatype.plugins</groupId>
                 <artifactId>nexus-staging-maven-plugin</artifactId>
-                <version>1.6.7</version>
+                <version>1.6.8</version>
                 <extensions>true</extensions>
                 <configuration>
                     <serverId>ossrh</serverId>
@@ -125,7 +132,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>2.2.1</version>
+                <version>3.2.1</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -138,10 +145,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.0.1</version>
-                <!--<configuration>-->
-                    <!--<javadocExecutable>${java.home}/bin/javadoc</javadocExecutable>-->
-                <!--</configuration>-->
+                <version>3.2.0</version>
+                <configuration>
+                    <javadocExecutable>${java.home}/bin/javadoc</javadocExecutable>
+                </configuration>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
@@ -154,7 +161,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>2.10</version>
+                <version>3.1.2</version>
                 <executions>
                     <execution>
                         <id>copy-dependencies</id>
@@ -189,7 +196,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>2.4.1</version>
+                <version>3.2.4</version>
                 <executions>
                     <!-- Run shade goal on package phase -->
                     <execution>
