@@ -1,15 +1,15 @@
 [
   {
-    "id" : "jmeter-clickhouse-listener",
-    "name" : "Jmeter Clickhouse Listener",
-    "description" : "This JMeter Plugin allows to write load test data on-the-fly to ClickHouse\nAdditional feature: aggregation of Samplers\nExplanations and usage examples on project wiki.",
-    "screenshotUrl" : "https://gitlab.com/testload/jmeter-clickhouse-listener/wikis/uploads/498fd6f5a85d7ce62f5cad54f69f6ce7/Screenshot_at_May_08_14-21-40.png",
-    "helpUrl": "https://gitlab.com/testload/jmeter-clickhouse-listener/wikis/home",
+    "id" : "jmeter.pack-listener",
+    "name" : "Jmeter Listeners pack",
+    "description" : "This JMeter Plugin allows to write load test data on-the-fly to InfluxDB, ElasticSearch, ClickHouse\nAdditional feature: aggregation of Samplers\nExplanations and usage examples on project wiki.",
+    "screenshotUrl" : "https://gitlab.com/testload/jmeter-listener/wikis/uploads/498fd6f5a85d7ce62f5cad54f69f6ce7/Screenshot_at_May_08_14-21-40.png",
+    "helpUrl": "https://gitlab.com/testload/jmeter-listener/wikis/home",
     "vendor": "cloud.testload",
-    "markerClass": "cloud.testload.jmeter.ClickHouseBackendListenerWriter",
+    "markerClass": "cloud.testload.jmeter.ClickHouseBackendListenerCLient",
     "versions" : {
-      "2.0" : {
-        "downloadUrl" : "https://search.maven.org/remotecontent?filepath=cloud/testload/jmeter-clickhouse-listener/2.0/jmeter-clickhouse-listener-2.0.jar"
+      "1.5" : {
+        "downloadUrl" : "https://search.maven.org/remotecontent?filepath=cloud/testload/jmeter.pack-listener/1.5/jmeter.pack-listener-1.5.jar"
       }
     }
   }

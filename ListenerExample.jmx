@@ -77,7 +77,7 @@
             </elementProp>
           </collectionProp>
         </elementProp>
-        <stringProp name="classname">cloud.testload.jmeter.ClickHouseBackendListenerWriter</stringProp>
+        <stringProp name="classname">cloud.testload.jmeter.ClickHouseBackendListenerClient</stringProp>
       </BackendListener>
       <hashTree/>
     </hashTree>
