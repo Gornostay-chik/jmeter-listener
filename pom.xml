@@ -6,11 +6,11 @@
 
     <groupId>cloud.testload</groupId>
     <artifactId>jmeter.pack-listener</artifactId>
-    <version>2.07</version>
+    <version>3.04</version>
     <packaging>jar</packaging>
     <name>JMeterPackListener</name>
     <description>JMeter Backend Listener is a JMeter plugin enabling you to send SampleResults to ClickHouse, InfluxDB, ElasticSearch</description>
-    <url>https://gitlab.com/testload/jmeter-listener</url>
+    <url>https://github.com/Gornostay-chik/jmeter-listener.git</url>
 
     <licenses>
         <license>
@@ -21,16 +21,14 @@
     </licenses>
 
     <scm>
-        <url>https://gitlab.com/testload/jmeter-listener.git</url>
+        <url>https://github.com/Gornostay-chik/jmeter-listener.git</url>
     </scm>
 
     <developers>
         <developer>
-            <id>lansio</id>
-            <name>Alexander Babaev</name>
-            <email>testload@icloud.com</email>
-            <url>https://gitlab.com/testload</url>
-            <timezone>Europe/Moscow</timezone>
+            <id>Gornostay-chik</id>
+            <url>https://github.com/Gornostay-chik</url>
+            <timezone>Europe/Belgrade</timezone>
         </developer>
     </developers>
 
@@ -43,7 +41,6 @@
         <org.apache.commons>3.7</org.apache.commons>
         <org.elasticsearch.client>6.4.0</org.elasticsearch.client>
         <org.influxdb.influxdb-java>2.15</org.influxdb.influxdb-java>
-        <ru.yandex.clickhouse.clickhouse-jdbc>0.2.4</ru.yandex.clickhouse.clickhouse-jdbc>
     </properties>
     <dependencies>
         <dependency>
@@ -91,10 +88,11 @@
             <artifactId>influxdb-java</artifactId>
             <version>${org.influxdb.influxdb-java}</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.clickhouse/clickhouse-jdbc -->
         <dependency>
-            <groupId>ru.yandex.clickhouse</groupId>
+            <groupId>com.clickhouse</groupId>
             <artifactId>clickhouse-jdbc</artifactId>
-            <version>${ru.yandex.clickhouse.clickhouse-jdbc}</version>
+            <version>0.8.6</version>
         </dependency>
     </dependencies>
     <distributionManagement>
@@ -112,7 +110,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
-                <version>1.5</version>
+                <version>3.2.7</version>
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
@@ -186,8 +184,9 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>2.8.1</version>
+                <version>3.1.4</version>
                 <executions>
                     <execution>
                         <id>default-deploy</id>

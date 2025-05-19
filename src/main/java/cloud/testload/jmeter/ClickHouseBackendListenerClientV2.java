@@ -9,15 +9,11 @@ import org.apache.jmeter.visualizers.backend.BackendListenerContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import ru.yandex.clickhouse.ClickHouseDataSource;
-import ru.yandex.clickhouse.settings.ClickHouseProperties;
+import com.clickhouse.jdbc.ClickHouseDriver;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Timestamp;
+import java.sql.*;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -105,7 +101,7 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
     /**
      * clickHouse DS.
      */
-    private ClickHouseDataSource clickHouse;
+  //  private ClickHouseDataSource clickHouse;
     private Connection connection;
 
     /**
@@ -359,32 +355,57 @@ public class ClickHouseBackendListenerClientV2 extends AbstractBackendListenerCl
      *            {@link BackendListenerContext}.
      */
     private void setupClickHouseClient(BackendListenerContext context) {
-        clickhouseConfig= new ClickHouseConfig(context);
-        ClickHouseProperties properties = new ClickHouseProperties();
-        properties.setCompress(true);
-        properties.setDatabase(clickhouseConfig.getClickhouseDatabase());
-        properties.setUser(clickhouseConfig.getClickhouseUser());
-        properties.setPassword(clickhouseConfig.getClickhousePassword());
-        properties.setConnectionTimeout(60000); //hardcode to 60 sec
-        properties.setSocketTimeout(60000); //hardcode to 60 sec
-        clickHouse = new ClickHouseDataSource("jdbc:clickhouse://"+clickhouseConfig.getClickhouseURL(), properties);
+        // Инициализация конфигурации из контекста
+        clickhouseConfig = new ClickHouseConfig(context);
+
+        // Подготовка параметров подключения
+        Properties properties = new Properties();
+        properties.setProperty("compress", "true");
+        properties.setProperty("user", clickhouseConfig.getClickhouseUser());
+        properties.setProperty("password", clickhouseConfig.getClickhousePassword());
+
+        // Формирование URL, где база данных указывается как часть пути
+        String url = "jdbc:clickhouse://" + clickhouseConfig.getClickhouseURL() + "/" + clickhouseConfig.getClickhouseDatabase();
+
         try {
-            connection = clickHouse.getConnection();
+            // Явная регистрация драйвера (если требуется)
+            Class.forName("com.clickhouse.jdbc.ClickHouseDriver");
+
+            // Получение соединения через стандартный DriverManager
+            connection = DriverManager.getConnection(url, properties);
+        } catch (ClassNotFoundException e) {
+            System.err.println("Драйвер ClickHouse не найден. Проверьте, что зависимость указана корректно.");
+            e.printStackTrace();
         } catch (SQLException e) {
+            System.err.println("Ошибка при установлении соединения с ClickHouse.");
             e.printStackTrace();
         }
     }
 
     private void setupClickHouseClientWithoutDatabase(BackendListenerContext context) {
-        clickhouseConfig= new ClickHouseConfig(context);
-        ClickHouseProperties properties = new ClickHouseProperties();
-        properties.setCompress(true);
-        properties.setUser(clickhouseConfig.getClickhouseUser());
-        properties.setPassword(clickhouseConfig.getClickhousePassword());
-        clickHouse = new ClickHouseDataSource("jdbc:clickhouse://"+clickhouseConfig.getClickhouseURL(), properties);
+        // Инициализация конфигурации из контекста
+        clickhouseConfig = new ClickHouseConfig(context);
+
+        // Подготовка параметров подключения
+        Properties properties = new Properties();
+        properties.setProperty("compress", "true");
+        properties.setProperty("user", clickhouseConfig.getClickhouseUser());
+        properties.setProperty("password", clickhouseConfig.getClickhousePassword());
+
+        // Формирование URL без указания базы данных
+        String url = "jdbc:clickhouse://" + clickhouseConfig.getClickhouseURL();
+
         try {
-            connection = clickHouse.getConnection();
+            // Обязательно регистрируем драйвер ClickHouse (если он не загружен автоматом)
+            Class.forName("com.clickhouse.jdbc.ClickHouseDriver");
+
+            // Получение соединения через DriverManager с заданными параметрами
+            connection = DriverManager.getConnection(url, properties);
+        } catch (ClassNotFoundException e) {
+            System.err.println("Драйвер ClickHouse не найден. Проверьте зависимости.");
+            e.printStackTrace();
         } catch (SQLException e) {
+            System.err.println("Ошибка при установлении соединения с ClickHouse.");
             e.printStackTrace();
         }
     }

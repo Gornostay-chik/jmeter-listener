@@ -1,5 +1,16 @@
 package cloud.testload.jmeter;
 
+import main.java.cloud.testload.jmeter.config.clickhouse.ClickHouseConfig;
+import org.apache.jmeter.config.Arguments;
+import org.apache.jmeter.samplers.SampleResult;
+import org.apache.jmeter.visualizers.backend.AbstractBackendListenerClient;
+import org.apache.jmeter.visualizers.backend.BackendListenerContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import com.clickhouse.jdbc.ClickHouseDriver;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -7,37 +18,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import cloud.testload.jmeter.config.influxdb.TestStartEndMeasurement;
-import main.java.cloud.testload.jmeter.config.clickhouse.ClickHouseConfig;
-import org.apache.jmeter.config.Arguments;
-import org.apache.jmeter.samplers.SampleResult;
-import org.apache.jmeter.threads.JMeterContextService;
-import org.apache.jmeter.threads.JMeterContextService.ThreadCounts;
-import org.apache.jmeter.visualizers.backend.AbstractBackendListenerClient;
-import org.apache.jmeter.visualizers.backend.BackendListenerContext;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.Arrays;
-
-import com.clickhouse.jdbc.ClickHouseDriver;
-import cloud.testload.jmeter.JMPoint;
-
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
-
 
 /**
- * Backend listener that writes JMeter metrics to ClickHouse directly.
+ * Backend listener that writes JMeter metrics to ClickHouse directly new Version
  *
- * @author Alexander Babaev (minor changes and improvements)
+ * @author Gornostay-Chik
  *
  */
-public class ClickHouseBackendListenerClient extends AbstractBackendListenerClient implements Runnable {
+public class ClickHouseBackendListenerClientV3 extends AbstractBackendListenerClient implements Runnable {
     /**
      * Logger.
      */
@@ -56,9 +44,10 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
     private static final String KEY_RUN_ID = "runId";
     private static final String KEY_SAMPLERS_LIST = "samplersList";
     private static final String KEY_RECORD_SUB_SAMPLES = "recordSubSamples";
-    private static final String KEY_RECORD_GROUP_BY = "groupBy";
-    private static final String KEY_RECORD_GROUP_BY_COUNT = "groupByCountOrBatchSize";
-    private static final String KEY_RECORD_LEVEL = "recordAdditionalDataLevel";
+    private static final String KEY_RECORD_GROUP_BY_COUNT = "groupByCount";
+    private static final String KEY_RECORD_BATCH_SIZE= "batchSize";
+    private static final String KEY_RECORD_LEVEL = "recordDataLevel";
+    private static final String KEY_CREATE_DEF = "createDefinitions";
 
 
     /**
@@ -110,7 +99,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
     /**
      * clickHouse DS.
      */
-    //private ClickHouseDataSource clickHouse;
+ //   private ClickHouseDataSource clickHouse;
     private Connection connection;
 
     /**
@@ -124,10 +113,15 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
     private boolean recordSubSamples;
 
     /**
+     * Indicates whether to create database/tables
+     */
+    private boolean createDefinitions;
+
+    /**
      * Indicates whether to aggregate and level statistic
      */
-    private boolean groupBy;
     private int groupByCount;
+    private int batchSize;
     private String recordLevel;
 
     /**
@@ -138,11 +132,16 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
         sampleResults.forEach(it -> {
             //write every filtered result to array
             if (checkFilter(it)) {
-//                getUserMetrics().add(it);
                 switch (recordLevel){
                     case "info":
                         it.setSamplerData("");
                         it.setResponseData("");
+                        break;
+                    case "error":
+                        if (it.getErrorCount()==0) {
+                            it.setSamplerData("");
+                            it.setResponseData("");
+                        }
                         break;
                     default:
                         break;
@@ -153,26 +152,46 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                 //write every filtered sub_result to array
                 for (SampleResult subResult : it.getSubResults()) {
                     if (checkFilter(subResult)) {
-//                        getUserMetrics().add(subResult);
                         switch (recordLevel){
                             case "info":
-                                it.setSamplerData("");
-                                it.setResponseData("");
+                                subResult.setSamplerData("");
+                                subResult.setResponseData("");
+                                break;
+                            case "error":
+                                if (it.getErrorCount()==0) {
+                                    subResult.setSamplerData("");
+                                    subResult.setResponseData("");
+                                }
                                 break;
                             default:
                                 break;
                         }
                         allSampleResults.add(subResult);
+                    } else {
+                        if ((recordLevel.equals("error")&&(it.getErrorCount()>0)&&(subResult.getErrorCount()>0))){
+                            allSampleResults.add(subResult);
+                        }
                     }
                 }
             }
         });
 
         //Flush point(s) every group by Count
-        if (allSampleResults.size() >= groupByCount) {
-            if (groupBy) {
+//        if (allSampleResults.size() >= groupByCount) {
+//            if (recordLevel.equals("aggregate")) {
+//                flushAggregatedBatchPoints();
+//            }else flushBatchPoints();
+//        }
+
+        //Flush point(s) every group by Count
+        if (recordLevel.equals("aggregate")) {
+            if (allSampleResults.size() >= groupByCount*batchSize) {
                 flushAggregatedBatchPoints();
-            }else flushBatchPoints();
+            }
+        } else {
+            if (allSampleResults.size() >= batchSize) {
+                flushBatchPoints();
+            }
         }
     };
 
@@ -183,8 +202,8 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
     //Save one-item-array to DB
     private void flushBatchPoints() {
         try {
-            PreparedStatement point = connection.prepareStatement("insert into jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
-                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+            PreparedStatement point = connection.prepareStatement("INSERT INTO jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response, res_code)" +
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
             allSampleResults.forEach(it -> {
                 try {
                     point.setTimestamp(1,new Timestamp(it.getTimeStamp()));
@@ -202,11 +221,22 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                             point.setString(11, it.getSamplerData());
                             point.setString(12, it.getResponseDataAsString());
                             break;
+                        case "error":
+                            if (it.getErrorCount()>0) {
+                                point.setString(11, it.getSamplerData());
+                                point.setString(12, it.getResponseDataAsString());
+                            }
+                            else {
+                                point.setString(11, "");
+                                point.setString(12, "");
+                            }
+                            break;
                         default:
                             point.setString(11, "");
                             point.setString(12, "");
                             break;
                     }
+                    point.setString(13,it.getResponseCode());
                     point.addBatch();
                 } catch (SQLException e) {
                     e.printStackTrace();
@@ -223,7 +253,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
     private void flushAggregatedBatchPoints()
     {
         //group aggregation
-        final Map<String,JMPoint> samplesTst = allSampleResults.stream().collect(Collectors.groupingBy(SampleResult::getSampleLabel,
+        final Map<String, JMPoint> samplesTst = allSampleResults.stream().collect(Collectors.groupingBy(SampleResult::getSampleLabel,
                 Collectors.collectingAndThen(Collectors.toList(), list -> {
                             long errorsCount = list.stream().collect(Collectors.summingLong(SampleResult::getErrorCount));
                             long count = list.stream().collect(Collectors.counting());
@@ -233,8 +263,8 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                 )));
         //save aggregates to DB
         try {
-            PreparedStatement point = connection.prepareStatement("insert into jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
-                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?)");
+            PreparedStatement point = connection.prepareStatement("INSERT INTO jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
+                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
             samplesTst.forEach((pointName,pointData)-> {
                 try {
                     point.setTimestamp(1,new Timestamp(System.currentTimeMillis()));
@@ -249,6 +279,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                     point.setDouble(10, pointData.getAverageTimeInt());
                     point.setString(11, "");
                     point.setString(12, "");
+                    point.setString(13, "");
                     point.addBatch();
                 } catch (SQLException e) {
                     e.printStackTrace();
@@ -279,10 +310,10 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
         arguments.addArgument(KEY_SAMPLERS_LIST, ".*");
         arguments.addArgument(KEY_USE_REGEX_FOR_SAMPLER_LIST, "true");
         arguments.addArgument(KEY_RECORD_SUB_SAMPLES, "true");
-        arguments.addArgument(KEY_RECORD_GROUP_BY, "false");
         arguments.addArgument(KEY_RECORD_GROUP_BY_COUNT, "100");
+        arguments.addArgument(KEY_RECORD_BATCH_SIZE, "1000");
         arguments.addArgument(KEY_RECORD_LEVEL, "info");
-
+        arguments.addArgument(KEY_CREATE_DEF, "true");
         return arguments;
     }
 
@@ -290,9 +321,10 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
     public void setupTest(BackendListenerContext context) throws Exception {
         profileName = context.getParameter(KEY_PROFILE_NAME, "TEST");
         runId = context.getParameter(KEY_RUN_ID,"R001");
-        groupBy = context.getBooleanParameter(KEY_RECORD_GROUP_BY, false);
         groupByCount = context.getIntParameter(KEY_RECORD_GROUP_BY_COUNT, 100);
+        batchSize = context.getIntParameter(KEY_RECORD_BATCH_SIZE, 1000);
         recordLevel=context.getParameter(KEY_RECORD_LEVEL,"info");
+        createDefinitions=Boolean.parseBoolean(context.getParameter(KEY_CREATE_DEF,"true"));
         hostname=getHostname();
 
         setupClickHouseClientWithoutDatabase(context);
@@ -308,7 +340,7 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
     @Override
     public void teardownTest(BackendListenerContext context) throws Exception {
         LOGGER.info("Shutting down clickHouse scheduler...");
-        if (groupBy) {
+        if (recordLevel.equals("aggregate")) {
             flushAggregatedBatchPoints();
         }else flushBatchPoints();
         super.teardownTest(context);
@@ -380,31 +412,56 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
      * Creates the configured database in clickhouse if it does not exist yet.
      */
     private void createDatabaseIfNotExistent() {
+
         String dbtemplate_database="create database IF NOT EXISTS " + clickhouseConfig.getClickhouseDatabase();
 
         String dbtemplate_data="create table IF NOT EXISTS " +
-                clickhouseConfig.getClickhouseDatabase()+".jmresults\n" +
+                clickhouseConfig.getClickhouseDatabase()+".jmresults_data\n" +
                 "(\n" +
                 "\ttimestamp_sec DateTime,\n" +
                 "\ttimestamp_millis UInt64,\n" +
-                "\tprofile_name String,\n" +
-                "\trun_id String,\n" +
-                "\thostname String,\n" +
-                "\tthread_name String,\n" +
-                "\tsample_label String,\n" +
+                "\tprofile_name LowCardinality(String),\n" +
+                "\trun_id LowCardinality(String),\n" +
+                "\thostname LowCardinality(String),\n" +
+                "\tthread_name LowCardinality(String),\n" +
+                "\tsample_label LowCardinality(String),\n" +
                 "\tpoints_count UInt64,\n" +
                 "\terrors_count UInt64,\n" +
                 "\taverage_time Float64,\n" +
                 "\trequest String,\n" +
-                "\tresponse String\n" +
+                "\tresponse String,\n" +
+                "\tres_code LowCardinality(String)\n" +
                 ")\n" +
-                "engine = MergeTree()\n" +
-                "ORDER BY (timestamp_sec,timestamp_millis,profile_name,run_id,sample_label)\n" +
-                "PARTITION BY toYYYYMM(timestamp_sec)";
+                "engine = MergeTree\n" +
+                "PARTITION BY toYYYYMMDD(timestamp_sec)\n" +
+                "ORDER BY (timestamp_sec)\n" +
+                "TTL timestamp_sec + INTERVAL 1 WEEK\n" +
+                "SETTINGS index_granularity = 8192";
 
         String dbtemplate_stats="CREATE MATERIALIZED VIEW IF NOT EXISTS " +
-                clickhouseConfig.getClickhouseDatabase()+".jmresults_statistic " +
-                "ENGINE = MergeTree() PARTITION BY toYYYYMM(timestamp_sec) ORDER BY (timestamp_sec, profile_name, run_id, hostname, sample_label, thread_name) SETTINGS index_granularity = 8192 AS\n" +
+                clickhouseConfig.getClickhouseDatabase()+".jmresults_statistic (\n" +
+                "`timestamp_sec` DateTime Codec(LZ4HC),\n" +
+                "`timestamp_millis` UInt64 Codec(LZ4HC),\n" +
+                "`profile_name` LowCardinality(String),\n" +
+                "`run_id` LowCardinality(String),\n" +
+                "`thread_name` LowCardinality(String),\n" +
+                "`hostname` String Codec(LZ4HC),\n" +
+                "`sample_label` LowCardinality(String),\n" +
+                "`points_count` UInt64 Codec(LZ4HC),\n" +
+                "`errors_count` UInt64 Codec(LZ4HC),\n" +
+                "`average_time` Float64 Codec(LZ4HC),\n" +
+                "`res_code` LowCardinality(String))\n" +
+                "    ENGINE = MergeTree\n" +
+                "        PARTITION BY toYYYYMM(timestamp_sec)\n" +
+                "        ORDER BY (timestamp_sec,\n" +
+                "                  profile_name,\n" +
+                "                  run_id,\n" +
+                "                  hostname,\n" +
+                "                  sample_label,\n" +
+                "                  thread_name,\n" +
+                "                  res_code)\n" +
+                "        SETTINGS index_granularity = 8192\n" +
+                "AS\n" +
                 "SELECT timestamp_sec,\n" +
                 "       timestamp_millis,\n" +
                 "       profile_name,\n" +
@@ -414,14 +471,36 @@ public class ClickHouseBackendListenerClient extends AbstractBackendListenerClie
                 "       sample_label,\n" +
                 "       points_count,\n" +
                 "       errors_count,\n" +
-                "       average_time\n" +
+                "       average_time,\n" +
+                "       res_code\n" +
                 "FROM " +
-                clickhouseConfig.getClickhouseDatabase()+".jmresults";
+                clickhouseConfig.getClickhouseDatabase()+".jmresults_data";
+
+        String dbtemplate_buff="create table IF NOT EXISTS " +
+                clickhouseConfig.getClickhouseDatabase()+".jmresults\n" +
+                "(\n" +
+                "\ttimestamp_sec DateTime,\n" +
+                "\ttimestamp_millis UInt64,\n" +
+                "\tprofile_name LowCardinality(String),\n" +
+                "\trun_id LowCardinality(String),\n" +
+                "\thostname LowCardinality(String),\n" +
+                "\tthread_name LowCardinality(String),\n" +
+                "\tsample_label LowCardinality(String),\n" +
+                "\tpoints_count UInt64,\n" +
+                "\terrors_count UInt64,\n" +
+                "\taverage_time Float64,\n" +
+                "\trequest String,\n" +
+                "\tresponse String,\n" +
+                "\tres_code LowCardinality(String)\n" +
+                ")\n" +
+                "engine = Buffer("+clickhouseConfig.getClickhouseDatabase()+", jmresults_data, 16, 10, 60, 10000, 100000, 1000000, 10000000)";
         try {
-            connection.createStatement().execute(dbtemplate_database);
-            connection.createStatement().execute(dbtemplate_data);
-//            connection.createStatement().execute(dbtemplate_buff);
-            connection.createStatement().execute(dbtemplate_stats);
+            if (createDefinitions) {
+                connection.createStatement().execute(dbtemplate_database);
+                connection.createStatement().execute(dbtemplate_data);
+                connection.createStatement().execute(dbtemplate_buff);
+                connection.createStatement().execute(dbtemplate_stats);
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
