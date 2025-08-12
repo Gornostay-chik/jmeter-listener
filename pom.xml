@@ -6,7 +6,7 @@
 
     <groupId>cloud.testload</groupId>
     <artifactId>jmeter.pack-listener</artifactId>
-    <version>3.04</version>
+    <version>4.01</version>
     <packaging>jar</packaging>
     <name>JMeterPackListener</name>
     <description>JMeter Backend Listener is a JMeter plugin enabling you to send SampleResults to ClickHouse, InfluxDB, ElasticSearch</description>
