@@ -283,12 +283,11 @@ public class ClickHouseBackendListenerClientV4 extends AbstractBackendListenerCl
      * </ul>
      */
     private void flushBatchPoints() {
-        try {
-            PreparedStatement point = connection.prepareStatement("INSERT INTO jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response, res_code)" +
-                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        try (PreparedStatement point = connection.prepareStatement(
+                "INSERT INTO jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response, res_code) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
             allSampleResults.forEach(it -> {
                 try {
-                    point.setTimestamp(1,new Timestamp(it.getTimeStamp()));
+                    point.setTimestamp(1, new Timestamp(it.getTimeStamp()));
                     point.setLong(2, it.getTimeStamp());
                     point.setString(3, profileName);
                     point.setString(4, runId);
@@ -298,17 +297,16 @@ public class ClickHouseBackendListenerClientV4 extends AbstractBackendListenerCl
                     point.setInt(8, 1);
                     point.setInt(9, it.getErrorCount());
                     point.setDouble(10, it.getTime());
-                    switch (recordLevel){
+                    switch (recordLevel) {
                         case "debug":
                             point.setString(11, it.getSamplerData());
                             point.setString(12, it.getResponseDataAsString());
                             break;
                         case "error":
-                            if (it.getErrorCount()>0) {
+                            if (it.getErrorCount() > 0) {
                                 point.setString(11, it.getSamplerData());
                                 point.setString(12, it.getResponseDataAsString());
-                            }
-                            else {
+                            } else {
                                 point.setString(11, "");
                                 point.setString(12, "");
                             }
@@ -318,18 +316,19 @@ public class ClickHouseBackendListenerClientV4 extends AbstractBackendListenerCl
                             point.setString(12, "");
                             break;
                     }
-                    point.setString(13,it.getResponseCode());
+                    point.setString(13, it.getResponseCode());
                     point.addBatch();
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    LOGGER.error("Failed to prepare batch row for non-aggregate flush", e);
                 }
             });
 
             point.executeBatch();
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOGGER.error("Failed to execute non-aggregate batch flush to ClickHouse", e);
+        } finally {
+            allSampleResults.clear();
         }
-        allSampleResults.clear();
     }
 
     /**
@@ -356,13 +355,13 @@ public class ClickHouseBackendListenerClientV4 extends AbstractBackendListenerCl
                         }
                 )));
         // Save aggregates to DB
-        try {
-            PreparedStatement point = connection.prepareStatement("INSERT INTO jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response)" +
-                    " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            samplesTst.forEach((pointName,pointData)-> {
+        try (PreparedStatement point = connection.prepareStatement(
+                "INSERT INTO jmresults (timestamp_sec, timestamp_millis, profile_name, run_id, hostname, thread_name, sample_label, points_count, errors_count, average_time, request, response) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)")) {
+            samplesTst.forEach((pointName, pointData) -> {
                 try {
-                    point.setTimestamp(1,new Timestamp(System.currentTimeMillis()));
-                    point.setLong(2,  System.currentTimeMillis());
+                    long now = System.currentTimeMillis();
+                    point.setTimestamp(1, new Timestamp(now));
+                    point.setLong(2, now);
                     point.setString(3, profileName);
                     point.setString(4, runId);
                     point.setString(5, hostname);
@@ -376,14 +375,15 @@ public class ClickHouseBackendListenerClientV4 extends AbstractBackendListenerCl
                     point.setString(13, "");
                     point.addBatch();
                 } catch (SQLException e) {
-                    e.printStackTrace();
+                    LOGGER.error("Failed to prepare batch row for aggregate flush", e);
                 }
             });
             point.executeBatch();
         } catch (SQLException e) {
-            e.printStackTrace();
+            LOGGER.error("Failed to execute aggregate batch flush to ClickHouse", e);
+        } finally {
+            allSampleResults.clear();
         }
-        allSampleResults.clear();
     }
 
     /**
@@ -435,12 +435,39 @@ public class ClickHouseBackendListenerClientV4 extends AbstractBackendListenerCl
 
     @Override
     public void teardownTest(BackendListenerContext context) throws Exception {
-        LOGGER.info("Shutting down ClickHouse scheduler...");
-        if (recordLevel.equals("aggregate")) {
-            flushAggregatedBatchPoints();
-        } else {
-            flushBatchPoints();
+        LOGGER.info("Shutting down ClickHouse backend listener...");
+        // Attempt final flush
+        try {
+            if (recordLevel.equals("aggregate")) {
+                flushAggregatedBatchPoints();
+            } else {
+                flushBatchPoints();
+            }
+        } catch (Exception e) {
+            LOGGER.warn("Error while flushing during teardown", e);
         }
+
+        // Stop scheduler if present
+        if (scheduler != null) {
+            scheduler.shutdownNow();
+            try {
+                scheduler.awaitTermination(5, TimeUnit.SECONDS);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        // Close JDBC connection
+        if (connection != null) {
+            try {
+                if (!connection.isClosed()) {
+                    connection.close();
+                }
+            } catch (SQLException e) {
+                LOGGER.warn("Error closing ClickHouse JDBC connection", e);
+            }
+        }
+
         super.teardownTest(context);
     }
 
@@ -607,15 +634,15 @@ public class ClickHouseBackendListenerClientV4 extends AbstractBackendListenerCl
                 "\tres_code LowCardinality(String)\n" +
                 ")\n" +
                 "engine = Buffer("+clickhouseConfig.getClickhouseDatabase()+", jmresults_data, 16, 10, 60, 10000, 100000, 1000000, 10000000)";
-        try {
-            if (createDefinitions) {
-                connection.createStatement().execute(dbtemplate_database);
-                connection.createStatement().execute(dbtemplate_data);
-                connection.createStatement().execute(dbtemplate_buff);
-                connection.createStatement().execute(dbtemplate_stats);
+        if (createDefinitions) {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute(dbtemplate_database);
+                statement.execute(dbtemplate_data);
+                statement.execute(dbtemplate_buff);
+                statement.execute(dbtemplate_stats);
+            } catch (SQLException e) {
+                LOGGER.error("Failed to create ClickHouse database/tables", e);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 
