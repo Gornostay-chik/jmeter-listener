@@ -25,3 +25,9 @@ UPD (19 MAY 2025): V3 class!:
 1. Fix problem with Gorilla-LZ4
 2. New JDBC from CH - from 0.2.4 to 0.8.6
 
+UPD (12 AUG 2025): V4 class!:
+1. New `ClickHouseBackendListenerClientV4` in English only (comments, logs, docs)
+2. Proper resource cleanup: try-with-resources for statements, final flush on teardown, scheduler shutdown, safe JDBC close
+3. Improved logging on DB operations and error handling
+4. Extensive Javadoc with configuration, schema and batching details
+5. Version 4 was fully developed by Cursor AI (GPT‑5)
