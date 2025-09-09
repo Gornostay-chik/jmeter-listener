@@ -1,3 +1,4 @@
 In IDEA terminal
 export JAVA_HOME=$(dirname $(dirname $(readlink -f $(which java))))
-mvn package
+mvn clean package -Dmaven.javadoc.skip=true
+

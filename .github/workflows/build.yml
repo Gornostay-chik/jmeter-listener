@@ -28,7 +28,7 @@ jobs:
             ${{ runner.os }}-m2-
 
       - name: Build with Maven
-        run: mvn -B clean package
+        run: mvn clean package -Dmaven.javadoc.skip=true
 
       - name: Upload JAR artifact
         uses: actions/upload-artifact@v3
